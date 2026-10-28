@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
@@ -35,6 +35,18 @@ class NormalizedChatOpenAI(ChatOpenAI):
     reasoning_content roundtrip) live in subclasses so this base class
     stays small.
     """
+
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        # Parallel analysts share this model. LangChain's lazy _serialized
+        # cache can add a key while Pydantic iterates __dict__ for to_json().
+        # Snapshot the mappings, preserving Pydantic's field/extra semantics.
+        yield from (
+            (key, value) for key, value in self.__dict__.copy().items()
+            if not key.startswith("_")
+        )
+        extra = self.__pydantic_extra__
+        if extra:
+            yield from extra.copy().items()
 
     def invoke(self, input, config=None, **kwargs):
         return normalize_content(super().invoke(input, config, **kwargs))
