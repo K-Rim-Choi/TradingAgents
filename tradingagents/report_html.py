@@ -30,7 +30,7 @@ _CSS = """
   --paper: #fbfbfa; --ink: #1c2126; --muted: #5d6670; --rule: #e2e5e8; --wash: #f2f4f5;
   --accent: #087a59; --up: #087a59; --down: #b4372f; --level: #5d6670; --edge: #d3d8dc; --mark: #878f97;
   --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto, Arial, sans-serif;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -46,9 +46,19 @@ _CSS = """
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
-  font: 17px/1.62 var(--serif); font-kerning: normal;
+  font: 17px/1.85 var(--sans); font-kerning: normal;
+  overflow-wrap: anywhere;
 }
-.page { max-width: 46rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+.page { max-width: 52rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+html[lang="ko"] main { word-break: keep-all; }
+.run-details { margin-top: 1.5rem; }
+.run-details summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.run-details[open] summary { margin-bottom: 1rem; }
+.decision { margin-top: 2rem; padding: 1.5rem; background: var(--wash);
+  border: 1px solid var(--edge); border-left: 4px solid var(--accent); border-radius: 10px; }
+.decision h2 { margin: 0 0 1rem; padding: 0; border: 0; font-size: 1.3rem; }
+.decision > :last-child { margin-bottom: 0; }
+.decision-note { color: var(--muted); font-size: 0.8rem; }
 main h2, main h3 { scroll-margin-top: 1rem; }
 a { color: var(--accent); text-underline-offset: 0.15em; }
 h1, h2, h3, h4 { text-wrap: balance; }
@@ -96,7 +106,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   padding: 0.25rem 0.6rem; border: 1px solid var(--edge); border-radius: 4px; background: var(--paper);
   color: var(--muted); font: 0.8rem/1.4 var(--sans); text-decoration: none; }
 
-@media (min-width: 60rem) {
+@media (min-width: 72rem) {
   .contents { position: fixed; left: 1rem; top: 50%; transform: translateY(-50%); z-index: 1;
     max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; margin: 0;
     padding: 0.7rem 0.9rem; border: 1px solid transparent; border-radius: 6px;
@@ -157,6 +167,9 @@ table { border-collapse: collapse; width: 100%; font: 0.86rem/1.45 var(--sans);
   font-variant-numeric: tabular-nums; }
 th, td { padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
 th { font-weight: 600; border-bottom-color: var(--muted); }
+thead { background: var(--wash); }
+tbody tr:nth-child(even) { background: var(--wash); }
+td, th { min-width: 6rem; }
 tbody tr:last-child td { border-bottom: 0; }
 
 @media (max-width: 34rem) {
@@ -175,6 +188,9 @@ tbody tr:last-child td { border-bottom: 0; }
   .table { overflow: visible; }
   .page { max-width: none; padding: 0; }
   .contents, .to-top { display: none; }
+  .run-details { display: none; }
+  .decision { padding: 1rem; }
+  .decision h2 { break-before: auto; }
   main h2 { break-before: page; border-top: 0; margin-top: 0; }
   main section:first-child h2 { break-before: auto; }
   main h3, main h4 { break-after: avoid; }
@@ -247,6 +263,26 @@ def _run_details(final_state: dict, settings: dict | None) -> list[tuple[str, st
 
 def render_report(ticker: str, final_state: dict, settings: dict | None, parts) -> str:
     """The report page: title and rating, what produced the run, contents, sections."""
+    korean = str((settings or {}).get("output_language", "")).strip().lower() in {"korean", "ko", "한국어"}
+    labels = {
+        "Generated": "생성 시각", "Deep model": "심층 분석 모델", "Quick model": "일반 분석 모델",
+        "Analysts": "분석팀", "Debate rounds": "토론 횟수", "Data vendors": "데이터 제공자",
+        "Version": "버전", "Memory log": "이전 판단 기록",
+        "Analyst Team Reports": "분석팀 보고서", "Research Team Decision": "투자 논거 검토",
+        "Trading Team Plan": "매매 계획", "Risk Management Team Decision": "위험관리 검토",
+        "Portfolio Manager Decision": "최종 투자 판단", "Market Analyst": "기술적 분석",
+        "Sentiment Analyst": "시장 심리 분석", "News Analyst": "뉴스 분석",
+        "Fundamentals Analyst": "기업 재무 분석", "Bull Researcher": "상승 논거",
+        "Bear Researcher": "하락 논거", "Research Manager": "투자 논거 종합",
+        "Trader": "트레이더", "Aggressive Analyst": "적극적 관점", "Conservative Analyst": "보수적 관점",
+        "Neutral Analyst": "중립적 관점", "Portfolio Manager": "포트폴리오 관리자",
+        "Buy": "매수", "Overweight": "비중 확대", "Hold": "보유", "Underweight": "비중 축소",
+        "Sell": "매도", "REVIEW": "검토 필요",
+    }
+
+    def label(value):
+        return labels.get(value, value) if korean else value
+
     md = _markdown()
     rating = run_rating(final_state) if final_state.get("final_trade_decision") else ""
     tone = _TONE.get(rating, "review")
@@ -254,30 +290,41 @@ def render_report(ticker: str, final_state: dict, settings: dict | None, parts) 
 
     title = f'<span class="ticker">{escape(ticker)}</span>'
     if rating:
-        title += f' <span class="rating {tone}">{escape(rating)}</span>'
+        title += f' <span class="rating {tone}">{escape(label(rating))}</span>'
     details = "".join(
-        f'<div class="{"note" if label == "Memory log" else "detail"}">'
-        f"<dt>{escape(label)}</dt><dd>{value}</dd></div>"
-        for label, value in _run_details(final_state, settings)
+        f'<div class="{"note" if key == "Memory log" else "detail"}">'
+        f"<dt>{escape(label(key))}</dt><dd>{value}</dd></div>"
+        for key, value in _run_details(final_state, settings)
     )
 
     contents, body = [], []
     for n, (heading, _folder, written) in enumerate(parts, 1):
         agents = "".join(
-            f'<li><a href="#s{n}-{m}"><span class="bar"></span> <span class="label">{escape(agent)}</span></a></li>'
+            f'<li><a href="#s{n}-{m}"><span class="bar"></span> <span class="label">{escape(label(agent))}</span></a></li>'
             for m, (agent, _f, _t) in enumerate(written, 1)
         )
         numeral, _, name = heading.partition(". ")
         contents.append(f'<li><a href="#s{n}"><span class="num">{escape(numeral)}</span> '
-                        f'<span class="label">{escape(name)}</span></a><ul>{agents}</ul></li>')
-        body.append(f'<section id="s{n}"><h2>{escape(heading)}</h2>')
+                        f'<span class="label">{escape(label(name))}</span></a><ul>{agents}</ul></li>')
+        body.append(f'<section id="s{n}"><h2>{escape(numeral + ". " + label(name))}</h2>')
         for m, (agent, _filename, text) in enumerate(written, 1):
-            body.append(f'<h3 id="s{n}-{m}">{escape(agent)}</h3>\n{_render_agent_text(md, text)}')
+            body.append(f'<h3 id="s{n}-{m}">{escape(label(agent))}</h3>\n{_render_agent_text(md, text)}')
         body.append("</section>")
 
+    decision = ""
+    if final_state.get("final_trade_decision"):
+        decision_title = "최종 투자 판단" if korean else "Final investment decision"
+        note = ("포트폴리오 관리자의 원문입니다. 아래에서 분석 근거와 위험 검토를 확인하세요."
+                if korean else "Portfolio manager's original decision. Supporting analysis and risk reviews follow below.")
+        decision = (f'<article class="decision" aria-labelledby="decision-title">'
+                    f'<h2 id="decision-title">{decision_title}</h2>'
+                    f'<p class="decision-note">{note}</p>'
+                    f'{_render_agent_text(md, final_state["final_trade_decision"])}</article>')
+    analysis_date = f"분석 기준일: {date}" if korean else f"Analysis of {date}"
+    details_title = "분석 실행 정보" if korean else "Run details"
     page_title = " ".join(x for x in (ticker, date, rating) if x)
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{'ko' if korean else 'en'}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -290,16 +337,17 @@ def render_report(ticker: str, final_state: dict, settings: dict | None, parts) 
 <header class="masthead">
 <a class="logo" href="{_COMPANY}" rel="noopener" aria-label="Tauric Research">{_LOGO}</a>
 <h1>{title}</h1>
-<p class="date">{escape(f"Analysis of {date}" if date else "Analysis")}</p>
-<dl class="run">{details}</dl>
+<p class="date">{escape(analysis_date if date else ('투자 분석 보고서' if korean else 'Analysis'))}</p>
+<details class="run-details"><summary>{details_title}</summary><dl class="run">{details}</dl></details>
 </header>
-<nav class="contents" aria-label="Sections"><ul>{"".join(contents)}</ul></nav>
 <main>
+{decision}
+<nav class="contents" aria-label="{'목차' if korean else 'Sections'}"><ul>{"".join(contents)}</ul></nav>
 {"".join(body)}
 </main>
 <footer class="credit"><a href="{_PROJECT}" rel="noopener">TradingAgents</a> powered by <a class="brand" href="{_ORG}" rel="noopener">Tauric Research</a></footer>
 </div>
-<a class="to-top" href="#top">Top</a>
+<a class="to-top" href="#top">{'맨 위로' if korean else 'Top'}</a>
 </body>
 </html>
 """

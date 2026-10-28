@@ -83,6 +83,29 @@ def test_an_agent_s_own_headings_sit_below_its_heading(tmp_path):
     assert re.search(r"<h4[^>]*>Market view</h4>", page)
 
 
+@pytest.mark.unit
+def test_korean_report_localizes_navigation_and_shows_the_original_decision_first(tmp_path):
+    decision = "**Rating**: Hold\n\n현금 비중을 유지합니다.\n\n<script>alert(1)</script>"
+    write_report_tree(_state(final_trade_decision=decision), "NVDA", tmp_path,
+                      settings={**SETTINGS, "output_language": "Korean"})
+    page = (tmp_path / "complete_report.html").read_text(encoding="utf-8")
+    assert '<html lang="ko">' in page
+    assert "분석 기준일: 2026-09-26" in page and "분석팀 보고서" in page and "기술적 분석" in page
+    assert '<span class="rating level">보유</span>' in page
+    assert '<details class="run-details"><summary>분석 실행 정보</summary>' in page
+    decision_card = page.split('<article class="decision"', 1)[1].split("</article>", 1)[0]
+    assert "현금 비중을 유지합니다." in decision_card and "Rating" in decision_card
+    assert "<script>" not in decision_card and "&lt;script&gt;" in decision_card
+    assert page.index('id="decision-title"') < page.index('<section id="s1">')
+
+
+@pytest.mark.unit
+def test_partial_report_does_not_invent_a_final_decision(tmp_path):
+    page = _html(tmp_path, final_trade_decision="")
+    assert '<article class="decision"' not in page
+    assert '<span class="rating' not in page
+
+
 def _fields(fragment):
     return re.findall(r'<span class="field">([^<]*)</span>', fragment)
 

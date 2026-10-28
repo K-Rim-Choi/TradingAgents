@@ -221,6 +221,14 @@ At start-up the interactive CLI mentions a newer release and notices from Tauric
 
 A saved report also includes `complete_report.html`, the report as one page with its sections listed beside the text, for reading in a browser, on a phone or in print. Answering the save question at the prompt also asks about the page and can open it in your browser; `--no-html` skips it, and so does `ta.save_reports(state, "NVDA", html=False)` from Python.
 
+Reports are saved by default under `~/.tradingagents/logs/reports/<TICKER>_<YYYYMMDD_HHMMSS>/`.
+Set `TRADINGAGENTS_RESULTS_DIR` to choose the base directory, or choose another path at the save prompt.
+Use `tradingagents --save --html` to save both Markdown and HTML without the save questions.
+The HTML page leads with the portfolio manager's original final decision, followed by the
+supporting reports, and keeps model and data-source details in an expandable panel.
+With `TRADINGAGENTS_OUTPUT_LANGUAGE=Korean`, headings, navigation and rating labels are
+also shown in Korean. The page works offline and adapts to mobile screens, dark mode and printing.
+
 ### Markets and tickers
 
 TradingAgents works with any market Yahoo Finance covers, using the exchange-suffixed ticker. Company identity and the alpha benchmark resolve automatically per market.
